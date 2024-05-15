@@ -62,7 +62,7 @@ func beginMove(paths Paths, partition []fs.DirEntry, wg *sync.WaitGroup) {
 			fmt.Println("Problem copying file:", err)
 			continue
 		} else {
-			fmt.Println("File copied successfully!")
+			fmt.Println("Copied successfully:", file.Name())
 		}
 		
 		err = os.Remove(srcFile.Name())
@@ -70,7 +70,7 @@ func beginMove(paths Paths, partition []fs.DirEntry, wg *sync.WaitGroup) {
 			fmt.Println("Problem removing source file:", err)
 			continue
 		} else {
-			fmt.Println("File removed successfully!")
+			fmt.Println("Removed successfully:", file.Name())
 		}
 
 		count += 1
