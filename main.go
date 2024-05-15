@@ -39,6 +39,7 @@ func beginMove(paths Paths, partition []fs.DirEntry, wg *sync.WaitGroup) {
 	dst := paths.Dst
 	count := 0
 	for _, file := range partition {
+		fmt.Println("Current file:", file.Name())
 		srcPath := filepath.Join(src, file.Name())
 		dstPath := filepath.Join(dst, file.Name())
 
@@ -60,6 +61,16 @@ func beginMove(paths Paths, partition []fs.DirEntry, wg *sync.WaitGroup) {
 		if err != nil {
 			fmt.Println("Problem copying file:", err)
 			continue
+		} else {
+			fmt.Println("File copied successfully!")
+		}
+		
+		err = os.Remove(srcFile.Name())
+		if err != nil {
+			fmt.Println("Problem removing source file:", err)
+			continue
+		} else {
+			fmt.Println("File removed successfully!")
 		}
 
 		count += 1
