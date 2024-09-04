@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,7 +22,8 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	subDirs := partitionFiles(files, 50)
+	numPartitions := CalculateNumPartitions(len(files), 50, 2)
+	subDirs := partitionFiles(files, numPartitions)
 	var wg sync.WaitGroup
 	for _, dir := range subDirs {
 		wg.Add(1)
@@ -64,7 +66,7 @@ func beginMove(paths Paths, partition []fs.DirEntry, wg *sync.WaitGroup) {
 		} else {
 			fmt.Println("Copied successfully:", file.Name())
 		}
-		
+
 		err = os.Remove(srcFile.Name())
 		if err != nil {
 			fmt.Println("Problem removing source file:", err)
@@ -92,12 +94,12 @@ func partitionFiles(files []fs.DirEntry, numPartitions int) [][]fs.DirEntry {
 	return partitions
 }
 
-func calculateNumPartitions(numFiles int) int {
-	numPartitions := numFiles / 100
-	if numPartitions < 1 {
-		numPartitions = 1
-	}
-	return numPartitions
+// Calculates the number of partitions to make based on the # of files.
+// k is a constant representing a reasonable batch size per partition, and
+// c is a tuning constant to adjust the growth rate (e.g., 2 or 4, depending on how aggressively you want to increase partitions).
+func CalculateNumPartitions(numFiles int, k float64, c float64) int {
+	numPartitions := math.Max(1, math.Min(float64(numFiles)/k, c*math.Sqrt(float64(numFiles))))
+	return int(numPartitions)
 }
 
 type Paths struct {
