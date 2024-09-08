@@ -25,21 +25,29 @@ func main() {
 	numPartitions := CalculateNumPartitions(len(files), 50, 2)
 	subDirs := partitionFiles(files, numPartitions)
 	var wg sync.WaitGroup
+	var errorFilesList [][]os.File
 	for _, dir := range subDirs {
 		wg.Add(1)
 		go func(d []fs.DirEntry) {
 			defer wg.Done()
-			beginMove(paths, d, &wg)
+			errorFiles := beginMove(paths, d, &wg)
+			errorFilesList = append(errorFilesList, errorFiles)
 		}(dir)
 	}
 	wg.Wait()
+	errorFiles := flatten(errorFilesList)
+	fmt.Println("The following files may not have copied successfully:")
+	for _, errFile := range errorFiles {
+		fmt.Println(errFile)
+	}
 }
 
-func beginMove(paths Paths, partition []fs.DirEntry, wg *sync.WaitGroup) {
+func beginMove(paths Paths, partition []fs.DirEntry, wg *sync.WaitGroup) []os.File {
 	fmt.Println("Beginning move...")
 	src := paths.Src
 	dst := paths.Dst
 	count := 0
+	var errorFiles []os.File
 	for _, file := range partition {
 		fmt.Println("Current file:", file.Name())
 		srcPath := filepath.Join(src, file.Name())
@@ -66,6 +74,11 @@ func beginMove(paths Paths, partition []fs.DirEntry, wg *sync.WaitGroup) {
 		} else {
 			fmt.Println("Copied successfully:", file.Name())
 		}
+		if !fileExists(dstFile.Name()) {
+			fmt.Println("Possible error during copy. Adding file to error list...")
+			errorFiles = append(errorFiles, *dstFile)
+			continue
+		}
 
 		err = os.Remove(srcFile.Name())
 		if err != nil {
@@ -79,6 +92,27 @@ func beginMove(paths Paths, partition []fs.DirEntry, wg *sync.WaitGroup) {
 	}
 	fmt.Printf("%d files moved successfully!\n", count)
 	wg.Done()
+	return errorFiles
+}
+
+func flatten(nested [][]os.File) []os.File {
+	var result []os.File
+	for _, innerSlice := range nested {
+		result = append(result, innerSlice...)
+	}
+	return result
+}
+
+func fileExists(filepath string) bool {
+	_, err := os.Stat(filepath)
+	if err == nil {
+		return true
+	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	// An unexpected error occurred
+	return false
 }
 
 func partitionFiles(files []fs.DirEntry, numPartitions int) [][]fs.DirEntry {
