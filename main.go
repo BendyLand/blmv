@@ -30,19 +30,21 @@ func main() {
 		wg.Add(1)
 		go func(d []fs.DirEntry) {
 			defer wg.Done()
-			errorFiles := beginMove(paths, d, &wg)
+			errorFiles := beginMove(paths, d)
 			errorFilesList = append(errorFilesList, errorFiles)
 		}(dir)
 	}
 	wg.Wait()
 	errorFiles := flatten(errorFilesList)
-	fmt.Println("The following files may not have copied successfully:")
-	for _, errFile := range errorFiles {
-		fmt.Println(errFile)
+	if len(errorFiles) > 0 {
+		fmt.Println("The following files may not have copied successfully:")
+		for _, errFile := range errorFiles {
+			fmt.Println(errFile)
+		}
 	}
 }
 
-func beginMove(paths Paths, partition []fs.DirEntry, wg *sync.WaitGroup) []os.File {
+func beginMove(paths Paths, partition []fs.DirEntry) []os.File {
 	fmt.Println("Beginning move...")
 	src := paths.Src
 	dst := paths.Dst
@@ -91,7 +93,6 @@ func beginMove(paths Paths, partition []fs.DirEntry, wg *sync.WaitGroup) []os.Fi
 		count += 1
 	}
 	fmt.Printf("%d files moved successfully!\n", count)
-	wg.Done()
 	return errorFiles
 }
 
