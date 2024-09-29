@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 func main() {
@@ -22,15 +23,24 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	fmt.Print("Calculating number of partitions: ")
 	numPartitions := CalculateNumPartitions(len(files), 50, 2)
+	time.Sleep(1 * time.Second)
+	fmt.Println(numPartitions)
+	currentPartition := 0
+	fmt.Println("Dividing files...")
+	time.Sleep(1 * time.Second)
 	subDirs := partitionFiles(files, numPartitions)
 	var wg sync.WaitGroup
 	var errorFilesList [][]os.File
+	fmt.Printf("Beginning move...\n\n")
+	time.Sleep(1 * time.Second)
 	for _, dir := range subDirs {
 		wg.Add(1)
 		go func(d []fs.DirEntry) {
 			defer wg.Done()
-			errorFiles := beginMove(paths, d)
+			currentPartition++
+			errorFiles := beginMove(paths, d, currentPartition, numPartitions)
 			errorFilesList = append(errorFilesList, errorFiles)
 		}(dir)
 	}
@@ -41,17 +51,19 @@ func main() {
 		for _, errFile := range errorFiles {
 			fmt.Println(errFile)
 		}
+	} else {
+		fmt.Println("All files moved successfully!")
 	}
 }
 
-func beginMove(paths Paths, partition []fs.DirEntry) []os.File {
-	fmt.Println("Beginning move...")
+func beginMove(paths Paths, partition []fs.DirEntry, currentPartition int, numPartitions int) []os.File {
+	fmt.Printf("Starting partition %d/%d.\n", currentPartition, numPartitions)
 	src := paths.Src
 	dst := paths.Dst
 	count := 0
 	var errorFiles []os.File
 	for _, file := range partition {
-		fmt.Println("Current file:", file.Name())
+		fmt.Printf("\nCurrent file: %s\n\n", file.Name())
 		srcPath := filepath.Join(src, file.Name())
 		dstPath := filepath.Join(dst, file.Name())
 
@@ -74,7 +86,7 @@ func beginMove(paths Paths, partition []fs.DirEntry) []os.File {
 			fmt.Println("Problem copying file:", err)
 			continue
 		} else {
-			fmt.Println("Copied successfully:", file.Name())
+			fmt.Println("Copied successfully: ", file.Name())
 		}
 		if !fileExists(dstFile.Name()) {
 			fmt.Println("Possible error during copy. Adding file to error list...")
@@ -89,10 +101,9 @@ func beginMove(paths Paths, partition []fs.DirEntry) []os.File {
 		} else {
 			fmt.Println("Removed successfully:", file.Name())
 		}
-
 		count += 1
 	}
-	fmt.Printf("%d files moved successfully!\n", count)
+	fmt.Printf("\n%d files moved successfully! (Partition: %d/%d)\n\n", count, currentPartition, numPartitions)
 	return errorFiles
 }
 
