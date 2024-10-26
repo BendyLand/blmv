@@ -117,14 +117,6 @@ func beginMove(paths Paths, partition []fs.DirEntry, currentPartition int, numPa
 	return errorFiles
 }
 
-func flatten(nested [][]os.File) []os.File {
-	var result []os.File
-	for _, innerSlice := range nested {
-		result = append(result, innerSlice...)
-	}
-	return result
-}
-
 func fileExists(filepath string) bool {
 	_, err := os.Stat(filepath)
 	if err == nil {
