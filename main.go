@@ -70,6 +70,9 @@ func beginMove(paths Paths, partition []fs.DirEntry, currentPartition int, numPa
 	count := 0
 	var errorFiles []os.File
 	for _, file := range partition {
+		if file.Name() == "config.txt" {
+			continue
+		}
 		fmt.Printf("\nCurrent file: %s\n\n", file.Name())
 		srcPath := filepath.Join(src, file.Name())
 		dstPath := filepath.Join(dst, file.Name())
