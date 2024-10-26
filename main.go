@@ -32,7 +32,7 @@ func main() {
 	time.Sleep(1 * time.Second)
 	subDirs := partitionFiles(files, numPartitions)
 	var wg sync.WaitGroup
-	var errorFilesList [][]os.File
+	errChan := make(chan []os.File, numPartitions)
 	fmt.Printf("Beginning move...\n\n")
 	time.Sleep(1 * time.Second)
 	for _, dir := range subDirs {
@@ -40,15 +40,22 @@ func main() {
 		go func(d []fs.DirEntry) {
 			defer wg.Done()
 			currentPartition++
-			errorFiles := beginMove(paths, d, currentPartition, numPartitions)
-			errorFilesList = append(errorFilesList, errorFiles)
+			errFiles := beginMove(paths, d, currentPartition, numPartitions)
+			errChan <- errFiles
 		}(dir)
 	}
-	wg.Wait()
-	errorFiles := flatten(errorFilesList)
-	if len(errorFiles) > 0 {
+
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+	var errFilesList []os.File
+	for errs := range errChan {
+		errFilesList = append(errFilesList, errs...)
+	}
+	if len(errFilesList) > 0 {
 		fmt.Println("The following files may not have copied successfully:")
-		for _, errFile := range errorFiles {
+		for _, errFile := range errFilesList {
 			fmt.Println(errFile)
 		}
 	} else {
